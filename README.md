@@ -9,13 +9,8 @@ Instructions:
    > git clone https://github.com/jagot/fftutorial.git
    ```
 
-2. Run Julia in the root directory of the repository and enter the
-   following commands:
-   ```julia
-   using Pkg
-   Pkg.activate(".")
-   Pkg.instantiate()
-
-   using Pluto
-   Pluto.run(notebook="./fft-tutorial.jl")
+2. In the root directory of the repository, run
+   ```sh
+   > julia runme.jl
    ```
+
