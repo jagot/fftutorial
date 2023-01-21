@@ -4,39 +4,67 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ cf7caf47-9729-48b9-98fe-dc0ad5c75488
 begin
     using Pkg
-    Pkg.activate(".")
+    Pkg.activate(dirname(@__FILE__))
+
+    using PlutoUI
+    import PlutoUI: combine
 
     using PyPlot
+    PyPlot.svg(true)
     using Jagot.plotting
 
     using LinearAlgebra
     using FFTW
+
+    function multi_input(heading, inputs...)
+        combine() do Child
+            inputs = [md" $(label): $(Child(name, input))"
+                      for (name,input,label) in inputs]
+            md"""### $(heading)
+            $(inputs)
+            """
+        end
+    end
+    nothing
 end
 
 # ╔═╡ 67a7ac20-98c1-11ed-26c3-bbea299eec72
 md"""# FFTutorial
 
 Drs. Chen & Stefanos
+
+The avid reader can focus on the sections marked with a star (⋆) on
+the first read-through, other readers can safely skip these.
 """
 
 # ╔═╡ 0489010d-31c6-4d41-8a6c-0d6581183aa9
 md"""
 - [X] Inner product
 - [X] Complete set of orthogonal functions
-- [ ] Schwarz class
+- [X] Schwarz class
 - [X] Conjugate variables
-- [ ] DFT, DST, DCT
+- [X] DFT, DST, DCT
 - [-] Parseval’s theorem
 - [ ] Apodizing window functions
 - [ ] Background removal
 - [-] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
-- [ ] Frequency axis
-- [ ] Nyquist/Shannon, folding
-    - [ ] Higher sampling frequency => higher max frequency
-    - [ ] More samples => denser frequency grid
+- [X] Frequency axis
+- [-] Nyquist/Shannon, folding
+    - [X] Higher sampling frequency => higher max frequency
+    - [X] More samples => denser frequency grid
     - [ ] Zero padding does not give more info, but easier on the eyes
 - [ ] Zeta transform
 - [ ] Phase
@@ -47,7 +75,7 @@ md""" # Theory
 
 ## Fourier transform
 
-The _Fourier transform_ transforms between _conjugate variables_,
+The _Fourier transform_ (FT) transforms between _conjugate variables_,
 examples of which are
 
 - time and frequency,
@@ -132,7 +160,7 @@ frequency integral of ``\hat{f}(\omega)`` have to agree:
 \mathrm{d}\omega
 |\hat{f}(\omega)|^2
 ```
-This implies that the Fourier transform is _unitary_, i.e. it does not
+This implies that the FT is _unitary_, i.e. it does not
 change the norm. If we think in term of quantum mechanics, this is a
 trivial statement: the norm of the wavefunction has to be the same in
 e.g. the position and momentum representations:
@@ -171,7 +199,7 @@ This will become important later, when we work with FFT.
 
 ## Differentiation
 
-We can very easily figure out what the Fourier transform of a time
+We can very easily figure out what the FT of a time
 derivative of a function is:
 ```math
 \partial_t^n
@@ -210,17 +238,17 @@ f\rangle =
 ```
 (severe abuse of notation).
 
-A good way to think about this is that the Fourier transform and
+A good way to think about this is that the FT and
 differentiation/integration are _linear operations_, which in
 particular means that they commute and are distributive, and we can
-perform them in any order, i.e. Fourier transform the
+perform them in any order, i.e. FT the
 differentiated/integrated function, or differentiate/integrate the
 Fourier modes after transforming; the latter corresponds to
 multiplication/division by ``(\mathrm{i}\omega)^n``.
 
-### Side note on accuracy of differential operator approximations
+### ⋆ Side note on accuracy of differential operator approximations
 
-Using the Fourier transform to evaluate the derivative of a function
+Using the FT to evaluate the derivative of a function
 sampled on an equidistant grid is provably the best we can achieve,
 _provided the function fulfills periodic boundary conditions_. Many
 time propagators for the Schrödinger equation or Maxwell's equation
@@ -237,17 +265,49 @@ using finite-difference matrices of limited bandwidth or
 finite-elements (the latter typically have spectral accuracy of the
 differential operators within each element).
 
-## Special functions
+## Known transform pairs
 
-### Schwarz class
+To debug the use of a numeric FT, it is useful to
+compare with functions whose analytic FTs are known to
+us. However, functions like ``\sin(2\pi t)`` and ``\exp(\mathrm{i}2\pi
+t)`` have distributional FTs, which are not numerically
+representable. Instead we turn to the
 
+### Schwarz space
+
+which consists of compact functions whose FTs also lie
+in the Schwarz space. The most famous example is the Gaussian:
+
+```math
+\exp(-\alpha t^2)
+\leftrightarrow
+\frac{1}{\sqrt{2\alpha}}
+\exp\left(
+-\frac{\omega^2}{4\alpha}
+\right)
+```
+From this, we find the FT of a normalized, shifted Gaussian as
 ```math
 \frac{1}{\sqrt{2\pi}\sigma}
 \exp\left[
--\frac{(x-\mu)^2}{2\sigma^2}
+-\frac{(t-\mu)^2}{2\sigma^2} +
+\mathrm{i}\omega_0 t
+\right]
+\leftrightarrow
+\frac{1}{\sqrt{2\pi}}
+\exp\left[
+-\frac{\sigma^2(\omega-\omega_0)^2}{2}
+-\mathrm{i}\mu(\omega-\omega_0)
 \right]
 ```
 
+where we have used
+
+- the shift theorem: ``f(t-a) \leftrightarrow
+  \mathrm{e}^{-\mathrm{i}a\omega}\hat{f}(\omega)``, and
+
+- the scaling theorem: ``f(at) \leftrightarrow
+  \frac{1}{|a|}\hat{f}(\frac{\omega}{a})``.
 
 ## Discrete Fourier transform
 
@@ -305,16 +365,167 @@ four even smaller problems of size ``2^{q-2}`` and so on, until we
 have reached the primitive ``2\times2`` problem. This approach has
 ``\mathcal{O}(N\log N)`` complexity, instead of the
 ``\mathcal{O}(N^2)`` complexity of the brute-force evaluation of the
-DFT definition.
+DFT definition. Note that we do not necessarily only can apply the FFT
+to power-of-two problems only, since any number ``N`` can be
+decomposed into power-of-two numbers, with some loss in performance.
 
 _The_ standard implementation of FFT is [FFTW](https://www.fftw.org/)
 (Fastest Fourier Transform in the West), written by Steven G. Johnson
 _et al._
-
 """
 
 # ╔═╡ d3cc841e-9f41-437c-a8a9-3e9826824b0a
+md"""#### FFT grid
 
+The FFT evaluates the spectrum ``X_k`` at the following frequencies:
+
+```math
+\frac{f_s}{n}\times
+\begin{cases}
+[0,1,...,\lfloor\frac{n}{2}\rfloor-1,-\lfloor\frac{n}{2}\rfloor,-\lfloor\frac{n}{2}\rfloor+1,...,-1],
+& n \textrm{ even}, \\
+[0,1,...,\lfloor\frac{n-1}{2}\rfloor,-\lfloor\frac{n-1}{2}\rfloor,-\lfloor\frac{n-1}{2}\rfloor+1,...,-1],
+& n \textrm{ odd},
+\end{cases}
+```
+where
+```math
+f_s ≝ \frac{1}{\delta t}
+```
+is the sampling frequency, given by the inverse of the time step ``\delta t``.
+"""
+
+# ╔═╡ f19181e4-a11c-4df8-9eaa-a64bd8e6afa5
+fftfreq(4, 1)
+
+# ╔═╡ 6d886a64-c00b-4113-9a89-e28f2e10633c
+fftfreq(5, 2)
+
+# ╔═╡ 64368015-f25e-4f98-99ee-83820864bcb5
+md"""
+We can then use `fftshift` to get the frequencies in the "right" order:
+"""
+
+# ╔═╡ a4b57014-5c65-4301-bbc5-6e2ded20e647
+fftshift(fftfreq(4,1))
+
+# ╔═╡ 41e7fae4-124a-48a6-9e20-89f926b9633f
+md"""
+We also have to multiply by ``2\pi`` to get angular frequencies:
+"""
+
+# ╔═╡ 339f8799-4232-4d87-85ce-8518d838a7b6
+2π*fftshift(fftfreq(4,1))
+
+# ╔═╡ 6904a9e8-2506-479c-8373-6c8a8282957a
+md""" Therefore, we define the following helper function, that
+performs the `fftshift` and multiplication automatically: """
+
+# ╔═╡ 8a288f71-304f-4b26-9128-c8671ee063f5
+fftω(args...) = 2π*fftshift(fftfreq(args...))
+
+# ╔═╡ b3d09140-4efd-45ef-a64b-974f7a7d57bb
+md"""
+#### Normalization (Parseval's theorem)
+
+The FFT will the compute the DFT according to
+```math
+X_k =
+\sum_{n=1}^{N}
+\exp\left[
+-\mathrm{i}\frac{2\pi
+(n-1)(k-1)}{N}
+\right] x_n,
+\tag{FFT}
+```
+whereas the inverse FFT will compute
+```math
+X_k =
+\frac{1}{N}
+\sum_{n=1}^{N}
+\exp\left[
++\mathrm{i}\frac{2\pi (n-1)(k-1)}
+{N}
+\right] x_n,
+\tag{IFFT}
+```
+which we note is unsymmetrically normalized. The point is that the
+FFT–IFFT transform pair should be overall unitary, but if we only need
+the FFT transform, we can avoid a potentially unnecessary
+division. However, if we are interested in the spectral amplitudes, we
+have to perform the normalization ourselves.
+
+To illustrate this, we first compare the FFT of a Gaussian with the
+analytically known FT given above.
+
+TODO: Derive normalization used below.
+
+⋆ The reason for the seemingly odd choices of constants is the first
+rule of numeric debugging: never choose 0 or 1 as a test value, since
+we may then inadvertenly miss bugs because the function has nice
+values there (example ``x=x^2=x^3=...`` at ``x=0`` _and_ ``x=1``,
+which tells us nothing about the behaviour of the function).
+
+"""
+
+# ╔═╡ 10d23a53-9645-4c6b-98ec-9ed9ae28eeb7
+t1 = range(-51, stop=51, step=0.31)
+
+# ╔═╡ 400d17df-8133-4155-9bec-aceab27fa9e8
+ω1 = fftω(length(t1), 1/step(t1))
+
+# ╔═╡ 596abc03-335b-426a-8f2c-127be43a6ff9
+A1,μ1,σ1,a1 = 1.45,4.65,1.76,4.0
+
+# ╔═╡ ca9a70ff-5059-4332-bad0-c921550c7e45
+y1 = A1/(√(2π)*σ1)*exp.(-(t1 .- μ1).^2/(2σ1^2)) .* exp.(im*a1*t1)
+
+# ╔═╡ f5d076c3-63c2-4502-97f5-d0c6abf2a36f
+Y1 = fftshift(fft(y1))*(t1[end]-t1[1])/(√(2π)*length(t1))
+
+# ╔═╡ ea6fa10e-4c1f-4347-8115-3e781a7e7252
+Y1exact = A1/√(2π)*exp.(-σ1^2*(ω1 .- a1).^2/2 .- im*(μ1-t1[1])*(ω1 .- a1))
+
+# ╔═╡ d3a060e5-d742-4d47-94e4-bf305ca24011
+cfigure("Normalization", figsize=(8,10)) do
+    csubplot(211) do
+        plot(t1, y1)
+        xlabel(L"t")
+        ylabel(L"y(t)")
+        axes_labels_opposite(:x)
+    end
+    csubplot(4,2,(3,1),nox=true) do
+        plot(t1, real(Y1), label=L"\Re\{Y(\omega)\}")
+        plot(t1, real(Y1exact), label=L"$\Re\{Y(\omega)\}$ exact")
+        legend()
+    end
+    csubplot(4,2,(4,1)) do
+        plot(t1, imag(Y1), label=L"\Im\{Y(\omega)\}")
+        plot(t1, imag(Y1exact), label=L"$\Im\{Y(\omega)\}$ exact")
+        legend()
+        xlabel(L"\omega")
+    end
+    csubplot(224) do
+        plot(t1, abs2.(Y1), label=L"|Y(\omega)|^2")
+        plot(t1, abs2.(Y1exact), label=L"$|Y(\omega)|^2$ exact")
+        legend()
+        xlabel(L"\omega")
+        axes_labels_opposite(:y)
+    end
+end
+
+# ╔═╡ e9635e7c-6eac-4cdb-81d3-f551cb3af9d9
+md"""
+Equipped with this knowledge, we can define a helper function that
+returns the correctly normalized FFT:
+
+```math
+\operatorname{NFFT}(y;t) ≝ \operatorname{FFT}(y)\frac{t_N-t_1}{N\sqrt{2\pi}}
+```
+"""
+
+# ╔═╡ 5d86a89a-dc2f-4a6f-9462-12d78e4a75f4
+nfft(y, t) = fftshift(fft(y))*(t[end]-t[1])/(length(t)*√(2π))
 
 # ╔═╡ c0dfab29-a96c-40bb-85cb-776ccd661f68
 md""" # Sampling
@@ -345,13 +556,13 @@ t = range(-15, stop=15, length=150)
 md"And here is the corresponding frequency grid:"
 
 # ╔═╡ 28e307a3-d169-4371-8a2b-b64ce9d5d6cb
-ω = 2π*fftshift(fftfreq(length(t), 1/step(t)))
+ω = fftω(length(t), 1/step(t))
 
 # ╔═╡ 2374f003-1b73-4d04-8196-713983aa497e
 y = f.(t, 2)
 
 # ╔═╡ 7c0a4378-42ed-4a43-9d35-dc075f99200a
-Y = fftshift(fft(y))/length(t)
+Y = nfft(y, t)
 
 # ╔═╡ abfaf313-e881-48f5-b4b9-eed62505a5d0
 md"## Oversampling"
@@ -363,13 +574,13 @@ md"We first investigate what happens if we change the sampling frequency:"
 tfine = range(-15, stop=15, length=300)
 
 # ╔═╡ 3ce118c0-aa98-4920-91c4-cec860ae14a2
-ωfine = 2π*fftshift(fftfreq(length(tfine), 1/step(tfine)))
+ωfine = fftω(length(tfine), 1/step(tfine))
 
 # ╔═╡ dfb7032e-23e1-49a3-8d3a-fb6b890e20f0
 yfine = f.(tfine, 2)
 
 # ╔═╡ f94e1296-ecce-4789-943c-1bf87ac11349
-Yfine = fftshift(fft(yfine))/length(tfine)
+Yfine = nfft(yfine, tfine)
 
 # ╔═╡ 6f2ffbe2-290e-43e4-9c1c-b3c5183bfa8f
 cfigure("function fine sampling") do
@@ -403,18 +614,18 @@ md"## Undersampling (folding)"
 tcoarse = range(-15, stop=15, length=75)
 
 # ╔═╡ 42ba83b0-8162-4516-bf35-288a54bf4d7c
-ωcoarse = 2π*fftshift(fftfreq(length(tcoarse), 1/step(tcoarse)))
+ωcoarse = fftω(length(tcoarse), 1/step(tcoarse))
 
 # ╔═╡ 6bcf7aa6-d3f8-48eb-83d4-8dca7f50cf03
 ycoarse = f.(tcoarse, 2)
 
 # ╔═╡ 9bf8e6e9-efd4-4f2c-9953-bda19d7b8494
-Ycoarse = fftshift(fft(ycoarse))/length(tcoarse)
+Ycoarse = nfft(ycoarse, tcoarse)
 
 # ╔═╡ 8eab9d56-8c6c-4fea-ad7c-560f3c9a364c
 cfigure("function coarse sampling") do
     plot(t, y)
-    plot(tcoarse, ycoarse, "--")
+    plot(tcoarse, ycoarse)
     xlabel(L"t")
     ylabel(L"y(t)")
 end
@@ -423,11 +634,11 @@ end
 cfigure("Fourier transform coarse sampling") do
     csubplot(211,nox=true) do
         plot(ω, abs2.(Y))
-        plot(ωcoarse, abs2.(Ycoarse), "--")
+        plot(ωcoarse, abs2.(Ycoarse))
     end
     csubplot(212) do
         semilogy(ω, abs2.(Y))
-        semilogy(ωcoarse, abs2.(Ycoarse), "--")
+        semilogy(ωcoarse, abs2.(Ycoarse))
         xlabel(L"$\omega$ [rad]")
     end
 end
@@ -448,23 +659,70 @@ y2 = f.(t, 5)
 # ╔═╡ 105ee14a-40c6-41ef-b908-a2184c3a6109
 cfigure("function") do
     plot(t, y)
-    plot(t, y2, "--")
+    plot(t, y2)
     xlabel(L"t")
     ylabel(L"y(t)")
 end
 
 # ╔═╡ 2ccd66c9-166a-486b-b546-205ccb84135d
-Y2 = fftshift(fft(y2))/length(t)
+Y2 = nfft(y2, t)
 
 # ╔═╡ 200db744-1c52-404d-ab28-b7b4ff470d2c
 cfigure("Fourier transform") do
     plot(ω, abs2.(Y))
-    plot(ω, abs2.(Y2), "--")
+    plot(ω, abs2.(Y2))
 end
 
 # ╔═╡ de98ab8f-f2d4-4877-94e1-5a87dbee8485
 md"""The dashed spectrum is sharper, since the pulse is longer, and we
 have more time measure the actual frequency content."""
+
+# ╔═╡ 1fa261ac-0356-4786-89a5-32ba4fae48a1
+md"""## Custom sampling
+
+With these sliders, we can easily see what happens when we change the different parameters
+"""
+
+# ╔═╡ 2ba55a25-eae5-491c-a5f3-c28a252f5805
+@bind sampling_parameters multi_input("Sampling parameters",
+                                      (:time_step, Slider(range(0.001, stop=0.5, length=101), default=0.2, show_value=true),
+                                       "Time step"),
+                                      (:tmax, Slider(range(5, stop=70, length=101), default=15, show_value=true),
+                                       L"t_{\mathrm{max}}"),
+                                      (:pulse_length, Slider(range(0.5, stop=10, length=101), default=2.0, show_value=true),
+                                       "Pulse length"))
+
+# ╔═╡ a28c85d4-c8c2-4f03-b043-9ad448eee9e4
+tcustom = range(-sampling_parameters.tmax, stop=sampling_parameters.tmax,
+                step=sampling_parameters.time_step)
+
+# ╔═╡ 79b19bdd-ad18-4efe-b7b9-a45fb50ef168
+ωcustom = fftω(length(tcustom), 1/step(tcustom))
+
+# ╔═╡ cc344770-f189-4693-8dc3-b1ced5ebc219
+ycustom = f.(tcustom, sampling_parameters.pulse_length)
+
+# ╔═╡ cbb3a102-11f1-4b8f-ab0c-7e51bd5e8031
+Ycustom = nfft(ycustom, tcustom)
+
+# ╔═╡ 833df8f8-157a-4c73-826e-cb73c0b2030f
+cfigure("function custom sampling", figsize=(8,10)) do
+    
+    csubplot(211) do
+        plot(t, y)
+        plot(tcustom, ycustom)
+        xlabel(L"t")
+        ylabel(L"y(t)")
+        ylim(-0.45, 0.45)
+        axes_labels_opposite(:x)
+    end
+    csubplot(212) do
+        plot(ω, abs2.(Y))
+        plot(ωcustom, abs2.(Ycustom))
+        xlabel(L"$\omega$ [rad]")
+        ylabel(L"|Y(\omega)|^2")
+    end
+end
 
 # ╔═╡ e76ee3d3-eef6-487b-82d8-a0b615115562
 md""" # Apodizing window functions & background removal
@@ -477,9 +735,27 @@ md""" # Apodizing window functions & background removal
 # ╔═╡ Cell order:
 # ╟─67a7ac20-98c1-11ed-26c3-bbea299eec72
 # ╟─0489010d-31c6-4d41-8a6c-0d6581183aa9
-# ╠═cf7caf47-9729-48b9-98fe-dc0ad5c75488
+# ╟─cf7caf47-9729-48b9-98fe-dc0ad5c75488
 # ╟─23b0b46e-41c3-487e-a852-c2056cbb3afd
-# ╠═d3cc841e-9f41-437c-a8a9-3e9826824b0a
+# ╟─d3cc841e-9f41-437c-a8a9-3e9826824b0a
+# ╠═f19181e4-a11c-4df8-9eaa-a64bd8e6afa5
+# ╠═6d886a64-c00b-4113-9a89-e28f2e10633c
+# ╟─64368015-f25e-4f98-99ee-83820864bcb5
+# ╠═a4b57014-5c65-4301-bbc5-6e2ded20e647
+# ╟─41e7fae4-124a-48a6-9e20-89f926b9633f
+# ╠═339f8799-4232-4d87-85ce-8518d838a7b6
+# ╟─6904a9e8-2506-479c-8373-6c8a8282957a
+# ╠═8a288f71-304f-4b26-9128-c8671ee063f5
+# ╟─b3d09140-4efd-45ef-a64b-974f7a7d57bb
+# ╠═10d23a53-9645-4c6b-98ec-9ed9ae28eeb7
+# ╠═400d17df-8133-4155-9bec-aceab27fa9e8
+# ╠═596abc03-335b-426a-8f2c-127be43a6ff9
+# ╠═ca9a70ff-5059-4332-bad0-c921550c7e45
+# ╠═f5d076c3-63c2-4502-97f5-d0c6abf2a36f
+# ╠═ea6fa10e-4c1f-4347-8115-3e781a7e7252
+# ╟─d3a060e5-d742-4d47-94e4-bf305ca24011
+# ╟─e9635e7c-6eac-4cdb-81d3-f551cb3af9d9
+# ╠═5d86a89a-dc2f-4a6f-9462-12d78e4a75f4
 # ╟─c0dfab29-a96c-40bb-85cb-776ccd661f68
 # ╠═d8e9c2eb-8e7f-427c-b785-f7b504145dc7
 # ╟─a5e79680-8d5a-4d36-b08d-3d32eaf3b751
@@ -511,5 +787,12 @@ md""" # Apodizing window functions & background removal
 # ╠═2ccd66c9-166a-486b-b546-205ccb84135d
 # ╠═200db744-1c52-404d-ab28-b7b4ff470d2c
 # ╟─de98ab8f-f2d4-4877-94e1-5a87dbee8485
+# ╟─1fa261ac-0356-4786-89a5-32ba4fae48a1
+# ╟─2ba55a25-eae5-491c-a5f3-c28a252f5805
+# ╟─833df8f8-157a-4c73-826e-cb73c0b2030f
+# ╠═a28c85d4-c8c2-4f03-b043-9ad448eee9e4
+# ╠═79b19bdd-ad18-4efe-b7b9-a45fb50ef168
+# ╠═cc344770-f189-4693-8dc3-b1ced5ebc219
+# ╠═cbb3a102-11f1-4b8f-ab0c-7e51bd5e8031
 # ╟─e76ee3d3-eef6-487b-82d8-a0b615115562
 # ╠═0c029b61-c3ef-48aa-b3d2-46e4dc071c6d
