@@ -28,6 +28,7 @@ begin
 
     using LinearAlgebra
     using FFTW
+    import DSP: hanning, hamming
 
     function multi_input(heading, inputs...)
         combine() do Child
@@ -58,7 +59,7 @@ md"""
 - [X] Conjugate variables
 - [X] DFT, DST, DCT
 - [-] Parseval’s theorem
-- [ ] Apodizing window functions
+- [X] Apodizing window functions
 - [ ] Background removal
 - [-] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
 - [X] Frequency axis
@@ -419,10 +420,15 @@ We also have to multiply by ``2\pi`` to get angular frequencies:
 
 # ╔═╡ 6904a9e8-2506-479c-8373-6c8a8282957a
 md""" Therefore, we define the following helper function, that
-performs the `fftshift` and multiplication automatically: """
+performs the `fftshift` and multiplication automatically (we can even
+provide a specialized version of the function that accepts uniform
+grid and deduces the correct function parameters therefrom): """
 
 # ╔═╡ 8a288f71-304f-4b26-9128-c8671ee063f5
-fftω(args...) = 2π*fftshift(fftfreq(args...))
+begin
+    fftω(args...) = 2π*fftshift(fftfreq(args...))
+    fftω(t::AbstractRange) = fftω(length(t), 1/step(t))
+end
 
 # ╔═╡ b3d09140-4efd-45ef-a64b-974f7a7d57bb
 md"""
@@ -472,7 +478,7 @@ which tells us nothing about the behaviour of the function).
 t1 = range(-51, stop=51, step=0.31)
 
 # ╔═╡ 400d17df-8133-4155-9bec-aceab27fa9e8
-ω1 = fftω(length(t1), 1/step(t1))
+ω1 = fftω(t1)
 
 # ╔═╡ 596abc03-335b-426a-8f2c-127be43a6ff9
 A1,μ1,σ1,a1 = 1.45,4.65,1.76,4.0
@@ -556,7 +562,7 @@ t = range(-15, stop=15, length=150)
 md"And here is the corresponding frequency grid:"
 
 # ╔═╡ 28e307a3-d169-4371-8a2b-b64ce9d5d6cb
-ω = fftω(length(t), 1/step(t))
+ω = fftω(t)
 
 # ╔═╡ 2374f003-1b73-4d04-8196-713983aa497e
 y = f.(t, 2)
@@ -574,7 +580,7 @@ md"We first investigate what happens if we change the sampling frequency:"
 tfine = range(-15, stop=15, length=300)
 
 # ╔═╡ 3ce118c0-aa98-4920-91c4-cec860ae14a2
-ωfine = fftω(length(tfine), 1/step(tfine))
+ωfine = fftω(tfine)
 
 # ╔═╡ dfb7032e-23e1-49a3-8d3a-fb6b890e20f0
 yfine = f.(tfine, 2)
@@ -614,7 +620,7 @@ md"## Undersampling (folding)"
 tcoarse = range(-15, stop=15, length=75)
 
 # ╔═╡ 42ba83b0-8162-4516-bf35-288a54bf4d7c
-ωcoarse = fftω(length(tcoarse), 1/step(tcoarse))
+ωcoarse = fftω(tcoarse)
 
 # ╔═╡ 6bcf7aa6-d3f8-48eb-83d4-8dca7f50cf03
 ycoarse = f.(tcoarse, 2)
@@ -697,7 +703,7 @@ tcustom = range(-sampling_parameters.tmax, stop=sampling_parameters.tmax,
                 step=sampling_parameters.time_step)
 
 # ╔═╡ 79b19bdd-ad18-4efe-b7b9-a45fb50ef168
-ωcustom = fftω(length(tcustom), 1/step(tcustom))
+ωcustom = fftω(tcustom)
 
 # ╔═╡ cc344770-f189-4693-8dc3-b1ced5ebc219
 ycustom = f.(tcustom, sampling_parameters.pulse_length)
@@ -727,10 +733,101 @@ end
 # ╔═╡ e76ee3d3-eef6-487b-82d8-a0b615115562
 md""" # Apodizing window functions & background removal
 
+Up to now, we only considered functions with compact support,
+i.e. they were zero (or very close to) at the boundaries. We will now
+investigate what happens if we FFT functions which are non-zero at the
+boundaries, and what we can do to solve the arising difficulties.
+
+[Wikipedia entry on window functions](https://en.wikipedia.org/wiki/Window_function)
+
 """
 
-# ╔═╡ 0c029b61-c3ef-48aa-b3d2-46e4dc071c6d
+# ╔═╡ 339809db-595c-49bf-9ac9-e2de6b629149
+twind = range(0, stop=15, length=501)
 
+# ╔═╡ 5a20af58-e487-47df-a815-2613829e8b96
+ωwind = fftω(twind)
+
+# ╔═╡ c06cce88-2963-4ca3-92ea-97e947040ef7
+k = 4.0
+
+# ╔═╡ df729903-1de0-4f52-a8ec-db9b8406ceb1
+N = 1/√(twind[end]-twind[1])
+
+# ╔═╡ 0c029b61-c3ef-48aa-b3d2-46e4dc071c6d
+yrect = N*cos.(2π*k*twind)
+
+# ╔═╡ ddef623b-a2dc-4a6a-abf1-a252aa7fe5ff
+Yrect = nfft(yrect, twind)
+
+# ╔═╡ 2eebadbc-49e1-4078-a728-9342e1ee190c
+hannwind = hanning(length(twind))
+
+# ╔═╡ 8c6e2637-46a3-435b-9e0d-0665e59930db
+hammingwind = hamming(length(twind))
+
+# ╔═╡ 30d9bfba-c8c9-4aaa-8bee-0a85c8d261db
+md"""The [Hann function](https://en.wikipedia.org/wiki/Hann_function)
+(often misnomed Hanning window, in confusion with the similar [Hamming
+window](https://en.wikipedia.org/wiki/List_of_window_functions#Hann_and_Hamming_windows))
+smoothly truncates the signal at the edges of the domain: """
+
+# ╔═╡ 240d0868-26f6-4af6-9073-d0c764006077
+cfigure("windows") do
+    plot(twind, hannwind, label="Hann function")
+    plot(twind, hammingwind, label="Hamming window")
+    xlabel(L"t")
+    ylabel(L"w_0(t)")
+    legend()
+end
+
+# ╔═╡ b8196d13-8c79-410a-b954-a624cd1865fb
+yhann = hannwind .* yrect
+
+# ╔═╡ 1eb05b54-290a-4ed7-857c-05e39875c6d6
+Yhann = nfft(yhann, twind)
+
+# ╔═╡ 69c70e3e-dad2-4667-9fa9-baa1372db4cb
+yhamming = hammingwind .* yrect
+
+# ╔═╡ d66d32d5-92fc-4ec0-b510-45168eef17f0
+Yhamming = nfft(yhamming, twind)
+
+# ╔═╡ 6547d5c7-98b8-4449-9f50-f94b9a49ed3d
+cfigure("rectangular window") do
+    csubplot(211) do
+        plot(twind, yrect)
+        plot(twind, yhann)
+        plot(twind, yhamming, "--")
+        xlabel(L"t")
+        ylabel(L"y(t)")
+        axes_labels_opposite(:x)
+    end
+    csubplot(212) do
+        semilogy(ωwind, abs2.(Yrect), label="Rectangular window")
+        semilogy(ωwind, abs2.(Yhann), label="Hann window")
+        semilogy(ωwind, abs2.(Yhamming), "--", label="Hamming window")
+        axvline(2π*k, linestyle="--", color="black", linewidth=1.0)
+        xlabel(L"$\omega$ [rad]")
+        ylabel(L"|Y(\omega)|^2")
+        ylim(1e-8, 10)
+        legend()
+    end
+end
+
+# ╔═╡ eed0d9b5-c5b0-4889-8c72-546200034b96
+md"""The peaks are much sharper, when we use the Hann window, but it
+is not norm-conserving. This is contrast to the rectangular window
+(i.e. doing nothing), which _is_ norm-conserving. There are many
+different window functions designed to optimize one property or the
+other (there is no free lunch). The Hamming window gives yet sharper
+peaks, at the cost of a higher noise floor."""
+
+# ╔═╡ 63e6671f-8107-4764-9869-52a74d149f7a
+md"# Background removal"
+
+# ╔═╡ 265ca8dd-2996-41a7-81ba-b44d570f4627
+md"# FFT Differentiation"
 
 # ╔═╡ Cell order:
 # ╟─67a7ac20-98c1-11ed-26c3-bbea299eec72
@@ -795,4 +892,21 @@ md""" # Apodizing window functions & background removal
 # ╠═cc344770-f189-4693-8dc3-b1ced5ebc219
 # ╠═cbb3a102-11f1-4b8f-ab0c-7e51bd5e8031
 # ╟─e76ee3d3-eef6-487b-82d8-a0b615115562
+# ╠═339809db-595c-49bf-9ac9-e2de6b629149
+# ╠═5a20af58-e487-47df-a815-2613829e8b96
+# ╠═c06cce88-2963-4ca3-92ea-97e947040ef7
+# ╠═df729903-1de0-4f52-a8ec-db9b8406ceb1
 # ╠═0c029b61-c3ef-48aa-b3d2-46e4dc071c6d
+# ╠═ddef623b-a2dc-4a6a-abf1-a252aa7fe5ff
+# ╠═2eebadbc-49e1-4078-a728-9342e1ee190c
+# ╠═8c6e2637-46a3-435b-9e0d-0665e59930db
+# ╟─30d9bfba-c8c9-4aaa-8bee-0a85c8d261db
+# ╟─240d0868-26f6-4af6-9073-d0c764006077
+# ╠═b8196d13-8c79-410a-b954-a624cd1865fb
+# ╠═1eb05b54-290a-4ed7-857c-05e39875c6d6
+# ╠═69c70e3e-dad2-4667-9fa9-baa1372db4cb
+# ╠═d66d32d5-92fc-4ec0-b510-45168eef17f0
+# ╟─6547d5c7-98b8-4449-9f50-f94b9a49ed3d
+# ╟─eed0d9b5-c5b0-4889-8c72-546200034b96
+# ╟─63e6671f-8107-4764-9869-52a74d149f7a
+# ╟─265ca8dd-2996-41a7-81ba-b44d570f4627
