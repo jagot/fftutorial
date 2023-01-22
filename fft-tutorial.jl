@@ -49,6 +49,12 @@ Drs. Chen & Stefanos
 
 The avid reader can focus on the sections marked with a star (⋆) on
 the first read-through, other readers can safely skip these.
+
+An excellent reference is
+
+- Oran Brigham, E. (1988). The fast Fourier transform and its
+  applications. London, England: Prentice-Hall. ISBN: 0-13-307547-8
+
 """
 
 # ╔═╡ 0489010d-31c6-4d41-8a6c-0d6581183aa9
@@ -67,6 +73,7 @@ md"""
     - [X] Higher sampling frequency => higher max frequency
     - [X] More samples => denser frequency grid
     - [ ] Zero padding does not give more info, but easier on the eyes
+      [see Fig. 9.2 of Oran Brigham (1988)]
 - [ ] Zeta transform
 - [ ] Phase
 """
@@ -87,7 +94,7 @@ examples of which are
 In one dimension, it is given by
 ```math
 \hat{f}(\omega) =
-\frac{1}{\sqrt{2\pi}}
+a_1
 \int_{-\infty}^{\infty}
 \mathrm{d}t
 \mathrm{e}^{-\mathrm{i}\omega t}
@@ -97,13 +104,29 @@ f(t),
 and the inverse transform by
 ```math
 f(t) =
-\frac{1}{\sqrt{2\pi}}
+a_2
 \int_{-\infty}^{\infty}
 \mathrm{d}\omega
 \mathrm{e}^{\mathrm{i}\omega t}
-\hat{f}(\omega).
+\hat{f}(\omega),
 \tag{IFFT}
 ```
+where
+```math
+\omega ≝ 2\pi f,
+```
+and the normalization has to fulfill
+```math
+a_1a_2=\frac{1}{2\pi}.
+```
+Which choice we make decides our convention, the standard transforms
+we list in tables, and _Parseval's theorem_ discussed below. Here, we
+choose the symmetric ``a_1=a_2=(2\pi)^{-1/2}``, and define our
+transforms in terms of ``\omega`` instead of ``f`` (which is also a
+common choice). The energy is then given by ``E=\hbar\omega``, instead
+of ``E = hf`` [``\hbar ≝ h/(2\pi)``, so both relations are naturally
+always true]. See section 2.4 of Oran Brigham (1988) for more information.
+
 A mathematician would say that ``f(t)`` and ``\hat{f}(\omega)`` are
 different functions (hence the hat ``\hat{f}``), whereas a physicist
 would say they are just two different representations of the same
@@ -139,6 +162,13 @@ interval ``[-\infty,\infty]``:
 \mathrm{e}^{-\mathrm{i}(\omega-\omega') t} =
 \delta(\omega-\omega').
 ```
+We note that these functions are also a complete set in frequency
+space:
+```math
+\int\mathrm{d}\omega
+|\omega\rangle\langle \omega| =
+\hat{\mathbb{1}}.
+```
 
 This notation makes it obvious that we compute the _inner product_ of
 ``|\omega\rangle`` and ``|f\rangle``, by computing the projection of
@@ -156,7 +186,17 @@ frequency integral of ``\hat{f}(\omega)`` have to agree:
 \int_{-\infty}^\infty
 \mathrm{d}t
 |f(t)|^2 =
-\frac{1}{2\pi}
+2\pi
+a_1^2
+\int_{-\infty}^\infty
+\mathrm{d}\omega
+|\hat{f}(\omega)|^2.
+```
+With our choice ``a_1=(2\pi)^{-1/2}``, this simplifies to
+```math
+\int_{-\infty}^\infty
+\mathrm{d}t
+|f(t)|^2 =
 \int_{-\infty}^\infty
 \mathrm{d}\omega
 |\hat{f}(\omega)|^2
@@ -170,26 +210,22 @@ e.g. the position and momentum representations:
 |f|^2 =
 \langle f|f\rangle
 &=
+\begin{cases}
+\displaystyle
 \int\mathrm{d}t
 \langle f|t\rangle
 \langle t|f\rangle =
 \int\mathrm{d}t
-|f(t)|^2\\
-&=
+|f(t)|^2 &\\
+\displaystyle
 \int\mathrm{d}\omega
 \langle f|\omega\rangle
 \langle \omega|f\rangle =
 \int\mathrm{d}\omega
-|f(\omega)|^2\\
+|f(\omega)|^2&
+\end{cases}
 \end{aligned}
 ```
-TODO: What happened to the ``(2\pi)^{-1}``? Here we have assumed that
-```math
-\int\mathrm{d}\omega
-|\omega\rangle\langle \omega| =
-\hat{\mathbb{1}},
-```
-which may have the wrong normalization.
 
 Another way to view the Parseval's theorem is to think of it as the
 Hilbert-space analogue of Pythagoras' theorem:
