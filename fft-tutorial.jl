@@ -67,7 +67,7 @@ md"""
 - [-] Parseval’s theorem
 - [X] Apodizing window functions
 - [ ] Background removal
-- [-] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
+- [X] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
 - [X] Frequency axis
 - [-] Nyquist/Shannon, folding
     - [X] Higher sampling frequency => higher max frequency
@@ -580,13 +580,79 @@ f(t,\sigma) =
 \exp\left(
 -\frac{t^2}{2\sigma^2}
 \right)
-(1.2\sin2\pi t
-+\sin3\pi t)
+(a\sin2\pi t
++\sin b\pi t)
 ```
 """
 
 # ╔═╡ d8e9c2eb-8e7f-427c-b785-f7b504145dc7
-f(t, σ) = 1/(√(2π)*σ) * exp(-t^2/(2σ^2)) * (1.2sin(2π*t) + sin(4.5π*t))
+f(t, σ; a=1.2, b=4.5) = 1/(√(2π)*σ) * exp(-t^2/(2σ^2)) * (a*sin(2π*t) + sin(b*π*t))
+
+# ╔═╡ 178f1fc5-d6d8-473b-90dc-6a2ff0ec24e4
+# ╠═╡ disabled = true
+#=╠═╡
+# f(t, σ) = 1/(√(2π)*σ) * exp(-t^2/(2σ^2)) * sin(2π*t)
+  ╠═╡ =#
+
+# ╔═╡ f6feb286-b126-4855-80ce-c0e7248c2f0e
+
+md"""We also define its first and second derivatives, which we will
+need later:
+
+```math
+\begin{aligned}
+f'(t,\sigma)
+&=
+-\frac{t}{\sigma^2}
+f(t,\sigma)+
+\frac{1}{\sqrt{2\pi}\sigma}
+\exp\left(
+-\frac{t^2}{2\sigma^2}
+\right)
+\pi(2a\cos2\pi t
++b\cos b\pi t), \\
+f''(t,\sigma)
+&=
+-\frac{1}{\sigma^2}[
+f(t,\sigma)+
+tf'(t,\sigma)] -
+\frac{1}{\sqrt{2\pi}\sigma}
+\exp\left(
+-\frac{t^2}{2 \sigma^2}
+\right) \times \\
+&\qquad
+\left[
+\frac{t}{\sigma^2}
+\pi(2 a \cos{2 \pi t} + b \cos{b \pi t}) +
+\pi^2(4 a \sin{2 \pi t} + b^2 \sin{b \pi t})
+\right]
+\end{aligned}
+```
+"""
+
+# ╔═╡ bdba5492-bea8-4268-a1ea-8b57f15fe27e
+f′(t, σ; a=1.2, b=4.5) = -t/σ^2*f(t, σ; a=a, b=b) + 1/(√(2π)*σ) * exp(-t^2/(2σ^2)) * π*(2a*cos(2π*t) + b*cos(b*π*t))
+
+# ╔═╡ 1932ded5-3117-4912-9bf7-6510e15f6063
+# ╠═╡ disabled = true
+#=╠═╡
+# f′(t, σ) = -t/σ^2*f(t, σ) + 1/(√(2π)*σ) * exp(-t^2/(2σ^2)) * 2π*cos(2π*t)
+  ╠═╡ =#
+
+# ╔═╡ 7f74e7ae-961f-46b9-9704-8a3900e4e907
+f′′(t, σ; a=1.2, b=4.5) = -1/σ^2*(f(t, σ; a=a, b=b) + t*f′(t, σ; a=a, b=b)) -
+    1/(√(2π)*σ) * exp(-t^2/(2σ^2)) *
+    (t/σ^2*π*(2a*cos(2π*t) + b*cos(b*π*t)) +
+    π^2*(4a*sin(2π*t) + b^2*sin(b*π*t)))
+
+# ╔═╡ 6ada28ff-5d51-4199-9955-833d131c4633
+# ╠═╡ disabled = true
+#=╠═╡
+# f′′(t, σ) = -1/σ^2*(f(t, σ) + t*f′(t, σ)) -
+#     1/(√(2π)*σ) * exp(-t^2/(2σ^2)) *
+#     (t/σ^2*2π*cos(2π*t) +
+#     4π^2*sin(2π*t))
+  ╠═╡ =#
 
 # ╔═╡ a5e79680-8d5a-4d36-b08d-3d32eaf3b751
 md"Here is our standard time grid:"
@@ -650,7 +716,7 @@ md"""We see that the spectra agree, but the finer grid allows us to
 resolve higher frequencies."""
 
 # ╔═╡ 818e4a62-1882-4e03-9496-407d799dfae6
-md"## Undersampling (folding)"
+md"## Undersampling (aliasing, \"folding\")"
 
 # ╔═╡ bf8c2287-4dab-4883-bb28-f2355e1d6bbf
 tcoarse = range(-15, stop=15, length=75)
@@ -749,7 +815,7 @@ Ycustom = nfft(ycustom, tcustom)
 
 # ╔═╡ 833df8f8-157a-4c73-826e-cb73c0b2030f
 cfigure("function custom sampling", figsize=(8,10)) do
-    
+
     csubplot(211) do
         plot(t, y)
         plot(tcustom, ycustom)
@@ -863,7 +929,181 @@ peaks, at the cost of a higher noise floor."""
 md"# Background removal"
 
 # ╔═╡ 265ca8dd-2996-41a7-81ba-b44d570f4627
-md"# FFT Differentiation"
+md"""# FFT Differentiation
+
+The algorithms given below are copied verbatim from
+
+- Johnson, Steven G. (2011). [Notes on FFT-based
+  differentiation.](https://math.mit.edu/~stevenj/fft-deriv.pdf)
+
+Note that we _do not_ add our own normalization as we did in the
+helper function `nfft`; as mentioned earlier, the FFT–IFFT constitute
+a unitary transform pair, and any algorithm that performs first an FFT
+and subsequently an IFFT will automatically have the right norm for
+the end result.
+"""
+
+# ╔═╡ f087417a-2ef1-47b2-b84f-a392940b4fbe
+md"""## Algorithm 1
+
+Compute the sampled first derivative ``y_n' ≈ y'(nL/N)`` from samples ``y_n = y(nL/N)``.
+
+1. Given ``y_n`` for ``0≤n<N``, use an FFT to compute ``Y_k`` for ``0≤k<N``.
+
+2. Multiply ``Y_k`` by ``2π\mathrm{i} k`` for ``k < N/2``, by
+   ``2π\mathrm{i} (k − N )`` for ``k > N/2``, and by zero for ``k =
+   N/2`` (if ``N`` is even), to obtain ``Y_k'``.
+
+3. Compute ``y_n'`` from ``Y_k'`` via an inverse FFT.
+"""
+
+# ╔═╡ 2c867bc5-9a39-4557-a15f-8aee6e77a0ff
+function fft_derivative(y, fs=1; apodization::Function=N->true)
+    # This implements Algorithm 1 by Johnson (2011).
+    N = length(y)
+    ω = 2π*fftfreq(length(y), fs)
+    Y = fft(y .* apodization(N))
+    Y′ = im*ω .* Y
+    if iseven(N)
+        Y′[N÷2] = 0
+    end
+    ifft(Y′)
+end
+
+# ╔═╡ 570ea7f6-6723-47b8-a6af-99df7cf9059f
+tderiv = range(-10, stop=10, length=1001)
+
+# ╔═╡ df940576-fd46-47d0-adfd-e6622822b5b1
+yderiv = f.(tderiv, 2)
+
+# ╔═╡ 095883b3-b21a-4cba-ba3a-96f0f0beb5ac
+y′deriv = fft_derivative(yderiv, 1/step(tderiv))
+
+# ╔═╡ 892be44e-e10d-4304-9942-39a9c643d04a
+md"""We expect the derivative of a real function to be real as well,
+we check this by computing the norm of the imaginary part:"""
+
+# ╔═╡ c4e0a0c1-e5f6-4991-b37f-df8115e15968
+norm(imag(y′deriv))
+
+# ╔═╡ 5c7a235f-95e0-48fe-87b0-9adad3422add
+y′deriv_exact = f′.(tderiv, 2)
+
+# ╔═╡ 50044cbf-2ec3-4ffc-8803-e3177eb69b7c
+cfigure("fft differentation", figsize=(8,10)) do
+    csubplot(311, nox=true) do
+        plot(tderiv, yderiv)
+    end
+    csubplot(312, nox=true) do
+        plot(tderiv, real(y′deriv), label="Derivative via FFT")
+        plot(tderiv, y′deriv_exact, "--", label="Exact derivative")
+        legend()
+    end
+    csubplot(313) do
+        let err = abs.(y′deriv-y′deriv_exact)
+            plot(tderiv, err, label="FFT derivative error")
+            maximum(err) < 1e-2 && yscale("log")
+        end
+        xlabel(L"t")
+        legend()
+    end
+end
+
+# ╔═╡ 6f8bdbfa-ff30-4df8-a400-fcb69f434003
+
+md"""The errors are very small, but increase towards the edges, since
+even though our signal is very close to zero, it is not exactly
+so. Furthermore, the exact derivative assumes a non-periodic function,
+whereas FFT/IFFT actually _requires_ the function to be periodic, and
+enforces the periodicity ``t_{\textrm{max}}-t_{\textrm{min}}``.
+
+We thus investigate the influence of apodizing (windowing) our signal,
+before the FFT:
+"""
+
+# ╔═╡ eb375d72-66f9-4201-b601-12ccf82b239e
+y′deriv_hann = fft_derivative(yderiv, 1/step(tderiv), apodization=hanning)
+
+# ╔═╡ 5c5b6c6e-622c-4dd7-b20f-49e2e2ea620b
+cfigure("fft windowed differentation", figsize=(8,10)) do
+    csubplot(311, nox=true) do
+        plot(tderiv, yderiv)
+    end
+    csubplot(312, nox=true) do
+        plot(tderiv, real(y′deriv_hann), label="Derivative via FFT + Hann")
+        plot(tderiv, y′deriv_exact, "--", label="Exact derivative")
+        legend()
+    end
+    csubplot(313) do
+        let err = abs.(y′deriv_hann-y′deriv_exact)
+            plot(tderiv, err, label="FFT derivative + Hann error")
+            maximum(err) < 1e-2 && yscale("log")
+        end
+        xlabel(L"t")
+        legend()
+    end
+end
+
+# ╔═╡ d0a81caa-1973-4e80-8978-6f39e4234a57
+md"""This illustrates that windowing is not necessarily always the
+correct thing to do."""
+
+# ╔═╡ 43459ba8-8e3d-4851-9bbd-30f29e7788ad
+md"""## Algorithm 2
+
+Compute the sampled second derivative ``y'' ≈ y''(nL/N)`` from samples ``y_n = y(nL/N)``.
+
+1. Given ``y_n`` for ``0\le n<N``, use an FFT to compute ``Y_k`` for
+   ``0\le k<N``.
+
+2. Multiply ``Y_k`` by ``−[\frac{2π}{L}k]^2`` for ``k≤N/2`` and by
+   ``−[\frac{2π}{L}(k−N)]^2`` for ``k>N/2`` to obtain ``Y_k''``.
+
+3. Compute ``y_n''`` from ``Y_k''`` via an inverse FFT.
+"""
+
+# ╔═╡ a169f024-3c89-464d-b9bf-f2b965cdb72c
+function fft_second_derivative(y, fs=1; apodization::Function=N->true)
+    # This implements Algorithm 2 by Johnson (2011).
+    N = length(y)
+    ω² = (2π*fftfreq(length(y), fs)).^2
+    Y = fft(y .* apodization(N))
+    Y′′ = -ω² .* Y
+    ifft(Y′′)
+end
+
+# ╔═╡ 2b128426-045d-4fb0-8cc3-25dd9ae02da4
+y′′deriv = fft_second_derivative(yderiv, 1/step(tderiv))
+
+# ╔═╡ 8c290ee4-2b0e-48a4-898c-d4444f246455
+md"""Again, we expect the second derivative of a real function to be
+real as well:"""
+
+# ╔═╡ 5a58d0e6-5525-49c4-8bd2-4310c247ddbd
+norm(imag(y′′deriv))
+
+# ╔═╡ da9115b5-85e1-4227-bd5a-b84355497552
+y′′deriv_exact = f′′.(tderiv, 2)
+
+# ╔═╡ efde8cf9-f369-49a0-838c-af33d6d0102d
+cfigure("fft second differentation", figsize=(8,10)) do
+    csubplot(311, nox=true) do
+        plot(tderiv, yderiv)
+    end
+    csubplot(312, nox=true) do
+        plot(tderiv, real(y′′deriv), label="Second derivative via FFT")
+        plot(tderiv, y′′deriv_exact, "--", label="Exact second derivative")
+        legend()
+    end
+    csubplot(313) do
+        let err = abs.(y′′deriv-y′′deriv_exact)
+            plot(tderiv, err, label="FFT second derivative error")
+            maximum(err) < 1e-2 && yscale("log")
+        end
+        xlabel(L"t")
+        legend()
+    end
+end
 
 # ╔═╡ Cell order:
 # ╟─67a7ac20-98c1-11ed-26c3-bbea299eec72
@@ -891,6 +1131,12 @@ md"# FFT Differentiation"
 # ╠═5d86a89a-dc2f-4a6f-9462-12d78e4a75f4
 # ╟─c0dfab29-a96c-40bb-85cb-776ccd661f68
 # ╠═d8e9c2eb-8e7f-427c-b785-f7b504145dc7
+# ╟─178f1fc5-d6d8-473b-90dc-6a2ff0ec24e4
+# ╟─f6feb286-b126-4855-80ce-c0e7248c2f0e
+# ╠═bdba5492-bea8-4268-a1ea-8b57f15fe27e
+# ╟─1932ded5-3117-4912-9bf7-6510e15f6063
+# ╠═7f74e7ae-961f-46b9-9704-8a3900e4e907
+# ╟─6ada28ff-5d51-4199-9955-833d131c4633
 # ╟─a5e79680-8d5a-4d36-b08d-3d32eaf3b751
 # ╠═ab40d1ac-aff4-4161-907d-aa5688857977
 # ╟─b9404c8f-0a45-42c3-addc-825981d10814
@@ -946,3 +1192,23 @@ md"# FFT Differentiation"
 # ╟─eed0d9b5-c5b0-4889-8c72-546200034b96
 # ╟─63e6671f-8107-4764-9869-52a74d149f7a
 # ╟─265ca8dd-2996-41a7-81ba-b44d570f4627
+# ╟─f087417a-2ef1-47b2-b84f-a392940b4fbe
+# ╠═2c867bc5-9a39-4557-a15f-8aee6e77a0ff
+# ╠═570ea7f6-6723-47b8-a6af-99df7cf9059f
+# ╠═df940576-fd46-47d0-adfd-e6622822b5b1
+# ╠═095883b3-b21a-4cba-ba3a-96f0f0beb5ac
+# ╟─892be44e-e10d-4304-9942-39a9c643d04a
+# ╠═c4e0a0c1-e5f6-4991-b37f-df8115e15968
+# ╠═5c7a235f-95e0-48fe-87b0-9adad3422add
+# ╟─50044cbf-2ec3-4ffc-8803-e3177eb69b7c
+# ╟─6f8bdbfa-ff30-4df8-a400-fcb69f434003
+# ╠═eb375d72-66f9-4201-b601-12ccf82b239e
+# ╟─5c5b6c6e-622c-4dd7-b20f-49e2e2ea620b
+# ╟─d0a81caa-1973-4e80-8978-6f39e4234a57
+# ╟─43459ba8-8e3d-4851-9bbd-30f29e7788ad
+# ╠═a169f024-3c89-464d-b9bf-f2b965cdb72c
+# ╠═2b128426-045d-4fb0-8cc3-25dd9ae02da4
+# ╠═8c290ee4-2b0e-48a4-898c-d4444f246455
+# ╠═5a58d0e6-5525-49c4-8bd2-4310c247ddbd
+# ╠═da9115b5-85e1-4227-bd5a-b84355497552
+# ╟─efde8cf9-f369-49a0-838c-af33d6d0102d
