@@ -529,18 +529,18 @@ let
     p1 = plot(t1, [real(y1) imag(y1)],
               label=[L"\Re" L"\Im"],
               xlabel=L"t", ylabel=L"y_1(t)",
-              xmirror=true)
+              xmirror=true, lw=2)
 
     p2 = plot(ω1, [real(Y1) real(Y1exact)],
               label=[L"\Re\{Y(\omega)\}" L"$\Re\{Y(\omega)\}$ exact"],
-              leg=:topleft, xaxis=false)
+              leg=:topleft, xaxis=false, lw=2)
     p3 = plot(ω1, [imag(Y1) imag(Y1exact)],
               label=[L"\Im\{Y(\omega)\}" L"$\Im\{Y(\omega)\}$ exact"],
-              xlabel=L"\omega", leg=:topleft)
+              xlabel=L"\omega", leg=:topleft, lw=2)
     p4 = plot(ω1, [abs2.(Y1) abs2.(Y1exact)],
               label=[L"|Y(\omega)|^2" L"$|Y(\omega)|^2$ exact"],
               xlabel=L"\omega",
-              leg=:topleft, ymirror=true)
+              leg=:topleft, ymirror=true, lw=2)
 
     plot(p1, p2, p3, p4, layout=@layout([a; [[b;c] d]]), size=(700,900))
 end
@@ -696,8 +696,8 @@ Ycoarse = nfft(ycoarse, tcoarse)
 
 # ╔═╡ 8eab9d56-8c6c-4fea-ad7c-560f3c9a364c
 let
-    p1 = plot(t, y, label="Normal sampling", xlabel=L"t", ylabel=L"y(t)")
-    plot!(p1, tcoarse, ycoarse, label="Coarse sampling")
+    p1 = plot(t, y, label="Normal sampling", xlabel=L"t", ylabel=L"y(t)", lw=2)
+    plot!(p1, tcoarse, ycoarse, label="Coarse sampling", lw=2)
 end
 
 # ╔═╡ 4da5b68f-498c-4075-916e-4ddd8e2a48c0
@@ -726,8 +726,8 @@ y2 = f.(t, 5)
 
 # ╔═╡ 105ee14a-40c6-41ef-b908-a2184c3a6109
 let
-    p = plot(t, y, xlabel=L"t", ylabel=L"y(t)", label="Normal pulse")
-    plot!(p, t, y2, label="Longer pulse")
+    p = plot(t, y, xlabel=L"t", ylabel=L"y(t)", label="Normal pulse", lw=2)
+    plot!(p, t, y2, label="Longer pulse", lw=2)
 end
 
 # ╔═╡ 2ccd66c9-166a-486b-b546-205ccb84135d
@@ -735,8 +735,8 @@ Y2 = nfft(y2, t)
 
 # ╔═╡ 200db744-1c52-404d-ab28-b7b4ff470d2c
 let
-    p = plot(ω, abs2.(Y), xlabel=L"\omega", ylabel=L"|Y(\omega)|^2", label="Normal pulse")
-    plot!(p, ω, abs2.(Y2), label="Longer pulse")
+    p = plot(ω, abs2.(Y), xlabel=L"\omega", ylabel=L"|Y(\omega)|^2", label="Normal pulse", lw=2)
+    plot!(p, ω, abs2.(Y2), label="Longer pulse", lw=2)
 end
 
 # ╔═╡ de98ab8f-f2d4-4877-94e1-5a87dbee8485
@@ -1060,7 +1060,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "876ac20b85a3b272188cf8d6f88409d9db4f9f38"
+project_hash = "8392c5a3ebc84fca5b3bce9396d862f42405b584"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
