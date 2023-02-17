@@ -28,7 +28,7 @@ begin
 
     function multi_input(heading, inputs...)
         combine() do Child
-            inputs = [md" $(label): $(Child(name, input))"
+            inputs = [md"- $(label) $(Child(name, input))"
                       for (name,input,label) in inputs]
             md"""### $(heading)
             $(inputs)
@@ -773,11 +773,11 @@ With these sliders, we can easily see what happens when we change the different 
 # ╔═╡ 2ba55a25-eae5-491c-a5f3-c28a252f5805
 @bind sampling_parameters multi_input("Sampling parameters",
                                       (:time_step, Slider(range(0.001, stop=0.5, length=101), default=0.2, show_value=true),
-                                       "Time step"),
+                                       md"Time step"),
                                       (:tmax, Slider(range(5, stop=70, length=101), default=15, show_value=true),
-                                       L"t_{\mathrm{max}}"),
+                                       md"``t_{\mathrm{max}}``"),
                                       (:pulse_length, Slider(range(0.5, stop=10, length=101), default=2.0, show_value=true),
-                                       "Pulse length"))
+                                       md"Pulse length"))
 
 # ╔═╡ a28c85d4-c8c2-4f03-b043-9ad448eee9e4
 tcustom = range(-sampling_parameters.tmax, stop=sampling_parameters.tmax,
