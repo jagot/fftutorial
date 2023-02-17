@@ -65,10 +65,10 @@ md"""
 - [X] Background removal
 - [X] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
 - [X] Frequency axis
-- [-] Nyquist/Shannon, folding
+- [X] Nyquist/Shannon, folding
     - [X] Higher sampling frequency => higher max frequency
     - [X] More samples => denser frequency grid
-    - [ ] Zero padding does not give more info, but easier on the eyes
+    - [X] Zero padding does not give more info, but easier on the eyes
       [see Fig. 9.2 of Oran Brigham (1988)]
 - [ ] Zeta transform
 - [ ] Phase
@@ -506,12 +506,18 @@ which we note is unsymmetrically normalized. The point is that the
 FFT–IFFT transform pair should be overall unitary, but if we only need
 the FFT transform, we can avoid a potentially unnecessary
 division. However, if we are interested in the spectral amplitudes, we
-have to perform the normalization ourselves.
+have to perform the normalization ourselves. We do this by noting that
+if we wish the FFT to approximate the continuous Fourier transform in
+the Riemann sense, we have to multiply the sum by the time step
+``\delta t`` divided by ``\sqrt{2\pi}`` (since that is our choice of
+normalization of the Fourier transform, as detailed above):
+```math
+\frac{\delta t}{\sqrt{2\pi}} \equiv
+\frac{t_N-t_1}{N\sqrt{2\pi}}.
+```
 
-To illustrate this, we first compare the FFT of a Gaussian with the
-analytically known FT given above.
-
-TODO: Derive normalization used below.
+We test this normalization by comparing the FFT of a Gaussian with the
+analytically known transform, given above.
 
 ⋆ The reason for the seemingly odd choices of constants is the first
 rule of numeric debugging: never choose 0 or 1 as a test value, since
