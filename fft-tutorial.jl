@@ -967,13 +967,17 @@ y′deriv_hann = fft_derivative(yderiv, 1/step(tderiv), apodization=hanning)
 let
     p1 = plot(tderiv, yderiv, legend=false, xaxis=false, ylabel=L"y(t)", lw=2)
 
-    p2 = plot(tderiv, real(y′deriv_hann), label="Derivative via FFT + Hann", xaxis=false, ylabel=L"y'(t)", lw=2)
+    p2 = plot(tderiv, real(y′deriv), label="Derivative via FFT", xaxis=false, ylabel=L"y'(t)", lw=2)
+    plot!(p2, tderiv, real(y′deriv_hann), label="Derivative via FFT + Hann", lw=2)
     plot!(p2, tderiv, y′deriv_exact, label="Exact derivative", ls=:dash, lw=2)
 
-    p3 = let err = abs.(y′deriv_hann-y′deriv_exact)
-        plot(tderiv, err, label="FFT derivative error", lw=2,
-             xlabel=L"t",
-             yaxis = maximum(err) < 1e-2 ? :log10 : :identity)
+    p3 = let err = abs.(y′deriv-y′deriv_exact),
+        err_hann = abs.(y′deriv_hann-y′deriv_exact)
+        p3 = plot(tderiv, err, label="FFT derivative error", lw=2,
+                  xlabel=L"t",
+                  yaxis = maximum(err) < 1e-2 ? :log10 : :identity,
+                  legend=:bottomright)
+        plot!(p3, tderiv, err_hann, label="FFT derivative + Hann error", lw=2)
     end
 
     plot(p1, p2, p3, layout=@layout([a;b;c]), size=(700,700))
@@ -1030,7 +1034,8 @@ let
     p3 = let err = abs.(y′′deriv-y′′deriv_exact)
         plot(tderiv, err, label="FFT second derivative error", lw=2,
              xlabel=L"t",
-             yaxis = maximum(err) < 1e-2 ? :log10 : :identity)
+             yaxis = maximum(err) < 1e-2 ? :log10 : :identity,
+             legend=:bottomright)
     end
 
     plot(p1, p2, p3, layout=@layout([a;b;c]), size=(700,700))
