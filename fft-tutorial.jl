@@ -62,7 +62,7 @@ md"""
 - [X] DFT, DST, DCT
 - [-] Parseval’s theorem
 - [X] Apodizing window functions
-- [ ] Background removal
+- [X] Background removal
 - [X] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
 - [X] Frequency axis
 - [-] Nyquist/Shannon, folding
@@ -869,7 +869,68 @@ peaks, at the cost of a higher noise floor."""
 md"# Background removal"
 
 # ╔═╡ ff6cb77c-c4fb-4e92-9260-37b5fe41043a
-md"TODO"
+md"""
+Sometimes, when our periodic signal sits on top of a constant or
+slowly varying background, windowing the samples prior to performing
+the FFT is not enough. We may, with varying degrees of success,
+improve the computation of the spectrum by first attempting to remove
+the background signal.
+"""
+
+# ╔═╡ c2e6e2e6-acf6-4258-b121-c5fec5764e08
+# Signal on top of linear and cubic background
+yb = 0.1t + 1e-3t.^3 + sin.(2.3π*t)
+
+# ╔═╡ 6e6ac76e-10da-4997-8ed2-6001be559e68
+# Estimate background
+yslope = (yb[end]-yb[1])/(2*(t[end] - t[1]))*t
+
+# ╔═╡ 381faf86-1382-4038-a5ae-98acae6d61e0
+hw = hanning(length(t))
+
+# ╔═╡ 1507cec8-0ab5-46ca-8f14-fb16a9f1b909
+ybh = yb .* hw
+
+# ╔═╡ d4a01db1-60e7-42c4-8f47-2dd7ff3c0010
+ybmb = yb - yslope
+
+# ╔═╡ cc00bd19-59cc-43e7-9bf6-e8660e2ea9d3
+Yb = nfft(yb, t)
+
+# ╔═╡ 3e06327d-422c-4777-8fcc-f4ecaf989e6c
+Ybh = nfft(ybh, t)
+
+# ╔═╡ 986e5c86-2655-4c8c-8eec-0e82fc563254
+Ybmb = nfft((yb-yslope) .* hw, t)
+
+# ╔═╡ 9f1a15c8-7120-4120-952f-8c9f1f821603
+Yslope = nfft(yslope, t)
+
+# ╔═╡ 33b1201c-4e28-4611-b106-f2898448c70f
+let
+    p1 = plot(t, yb, lw=2, label="Signal with background", xmirror=true, xaxis=L"t", yaxis=L"y(t)")
+    plot!(p1, t, ybmb, lw=2, label="Signal with background removed")
+    plot!(p1, t, ybh, lw=2, ls=:dash, label="Signal windowed only")
+    plot!(p1, t, yslope, lw=2, ls=:dot, label="Linear slope")
+
+    p2 = plot(ω, abs2.(Yb), lw=2, label="Signal with background", ylabel=L"|Y(\omega)|^2",
+              xaxis=false)
+    plot!(p2, ω, abs2.(Ybmb), lw=2, label="Background removed and windowed")
+    plot!(p2, ω, abs2.(Ybh), lw=2, ls=:dash, label="Windowed only")
+    plot!(p2, ω, abs2.(Yslope), lw=2, ls=:dot, label="Linear slope")
+
+    p3 = plot(ω, abs2.(Yb), lw=2, label="Signal with background",
+              xlabel=L"\omega",
+              ylabel=L"|Y(\omega)|^2",
+              yaxis=(:log10, (1e-8, 1e3)),
+              legend=false)
+    plot!(p3, ω, abs2.(Ybmb), lw=2, label="Background removed and windowed")
+    plot!(p3, ω, abs2.(Ybh), lw=2, ls=:dash, label="Windowed only")
+    plot!(p3, ω, abs2.(Yslope), lw=2, ls=:dot, label="Linear slope")
+
+    plot(p1, p2, p3, layout=@layout([a;b;c]), size=(700,1000))
+end
+
 
 # ╔═╡ 265ca8dd-2996-41a7-81ba-b44d570f4627
 md"""# FFT Differentiation
@@ -2160,6 +2221,16 @@ version = "1.4.1+0"
 # ╟─eed0d9b5-c5b0-4889-8c72-546200034b96
 # ╟─63e6671f-8107-4764-9869-52a74d149f7a
 # ╟─ff6cb77c-c4fb-4e92-9260-37b5fe41043a
+# ╠═c2e6e2e6-acf6-4258-b121-c5fec5764e08
+# ╠═6e6ac76e-10da-4997-8ed2-6001be559e68
+# ╠═381faf86-1382-4038-a5ae-98acae6d61e0
+# ╠═1507cec8-0ab5-46ca-8f14-fb16a9f1b909
+# ╠═d4a01db1-60e7-42c4-8f47-2dd7ff3c0010
+# ╠═cc00bd19-59cc-43e7-9bf6-e8660e2ea9d3
+# ╠═3e06327d-422c-4777-8fcc-f4ecaf989e6c
+# ╠═986e5c86-2655-4c8c-8eec-0e82fc563254
+# ╠═9f1a15c8-7120-4120-952f-8c9f1f821603
+# ╟─33b1201c-4e28-4611-b106-f2898448c70f
 # ╟─265ca8dd-2996-41a7-81ba-b44d570f4627
 # ╟─f087417a-2ef1-47b2-b84f-a392940b4fbe
 # ╠═2c867bc5-9a39-4557-a15f-8aee6e77a0ff
