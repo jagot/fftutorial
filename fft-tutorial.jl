@@ -95,7 +95,7 @@ a_1
 \mathrm{d}t
 \mathrm{e}^{-\mathrm{i}\omega t}
 f(t),
-\tag{FFT}
+\tag{FT}
 ```
 and the inverse transform by
 ```math
@@ -105,11 +105,11 @@ a_2
 \mathrm{d}\omega
 \mathrm{e}^{\mathrm{i}\omega t}
 \hat{f}(\omega),
-\tag{IFFT}
+\tag{IFT}
 ```
 where
 ```math
-\omega ≝ 2\pi f,
+\omega ≝ 2\pi\nu,
 ```
 and the normalization has to fulfill
 ```math
@@ -375,6 +375,21 @@ x_{n}\cdot
 \sin \left({\frac {2\pi }{N}}kn\right).
 ```
 The DCT and DST are useful in signal processing and the solution of partial differential equations.
+
+The inverse transform is very similar:
+```math
+\tag{IDFT}
+x_n=
+\frac{1}{N}
+\sum_{n=0}^{N-1}
+X_{k}\cdot
+\mathrm{e}^{{\frac {\mathrm{i}2\pi }{N}}kn}.
+```
+Note that in contrast to the continuous Fourier transform, the
+DFT/IDFT pair is almost universally defined with the normalization
+``N^{-1}`` attached to the inverse transform. This avoids a
+potentially unnecessary division, if only the DFT is needed, and the
+normalization is unimportant.
 
 - Basis function ``\mathrm{e}^{-\mathrm{i}\frac{2\pi k}{N}n}`` instead
   of ``\mathrm{e}^{-\mathrm{i}\omega t}``.
