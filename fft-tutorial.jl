@@ -168,7 +168,7 @@ space:
 
 This notation makes it obvious that we compute the _inner product_ of
 ``|\omega\rangle`` and ``|f\rangle``, by computing the projection of
-``\langle t|f\rangle`` onto the basis functions ``\rangle
+``\langle t|f\rangle`` onto the basis functions ``\langle
 t|\omega\rangle`` (remember that in linear algebra, when we calculate
 the projection of a vector ``\mathbf{b}`` on a vector ``\mathbf{a}``,
 we have to take the conjugate transpose of ``\mathbf{a}``:
