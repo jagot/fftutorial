@@ -174,6 +174,106 @@ the projection of a vector ``\mathbf{b}`` on a vector ``\mathbf{a}``,
 we have to take the conjugate transpose of ``\mathbf{a}``:
 ``\mathbf{a}^H\mathbf{b}``).
 
+## Fourier transforms in higher dimensions
+
+The Fourier transform generalizes rather trivially to higher
+dimensions:
+
+```math
+\begin{aligned}
+\hat{f}(\omega_x,\omega_y,...)
+&=
+A_1
+\int_{-\infty}^\infty
+\mathrm{d}x
+\int_{-\infty}^\infty
+\mathrm{d}y
+...
+f(x,y,...), \\
+f(x,y,...)
+&=
+A_2
+\int_{-\infty}^\infty
+\mathrm{d}\omega_x
+\int_{-\infty}^\infty
+\mathrm{d}\omega_y
+...
+\hat{f}(\omega_x,\omega_y,...), \\
+A_1A_2
+&=
+\frac{1}{(2\pi)^N}.
+\end{aligned}
+```
+Again, we have to make a choice how we wish to distribute the
+normalization, here we choose ``A_1 = A_2 = (2\pi)^{M/2}``, where
+``M`` is the number of dimensions.
+
+We may compute the integrals in any order we fancy (provided the
+function ``f`` fulfills a lot of important mathematical properties a
+physicist would summarize as _nice_).
+
+Of course, for functions which factorize along the dimensions,
+``f(x,y,...)=f_x(x)f_y(y)...``, the Fourier transform also factorizes:
+
+```math
+\begin{aligned}
+\hat{f}(\omega_x,\omega_y,...)
+&=
+A_1
+\int_{-\infty}^\infty
+\mathrm{d}x
+\int_{-\infty}^\infty
+\mathrm{d}y
+...
+f(x,y,...) \\
+&=
+A_1
+\int_{-\infty}^\infty
+\mathrm{d}x
+f_x(x)
+\int_{-\infty}^\infty
+\mathrm{d}y
+f_y(y)
+... \\
+&=
+\hat{f}_x(\omega_x)
+\hat{f}_y(\omega_y)
+...
+\end{aligned}
+```
+An example of such a function would be a multidimensional Gaussian:
+
+```math
+f(x,y,...) =
+\exp\left[
+-a(x-x_0)^2
+-b(y-y_0)^2
+...
+\right] =
+\exp\left[
+-a(x-x_0)^2
+\right]
+\exp\left[
+-b(y-y_0)^2
+\right].
+```
+This is not the case for the more general multidimensional Gaussian
+```math
+\begin{aligned}
+f(x,y,...)
+&=
+\exp(-\mathbf{r}^T\mathsf{C}\mathbf{r}), &
+\mathbf{r}
+&≝
+\begin{bmatrix}x-x_0\\y-y_0\\\vdots\end{bmatrix},
+\end{aligned}
+```
+if the (positive-definite) matrix ``\mathsf{C}`` is non-diagonal,
+which leads to coupling of the dimensions. (We can of course
+diagonalize ``\mathsf{C}``, in which case the function factorizes
+along the eigenvector directions, but not necessarily along the
+Fourier basis vectors).
+
 ## Parseval's theorem
 
 _Parseval's theorem_ states that the time integral of ``f(t)`` and the
@@ -401,6 +501,10 @@ normalization is unimportant.
 - No Dirac ``\delta(\omega-\omega')``, instead Kronecker
   ``\delta_{kk'}``.
 
+In higher dimensions, we just perform one DFT per dimension,
+equivalently to how we may perform each of the integrals in the
+continuous case separately.
+
 ### Fast Fourier Transform
 
 The _Fast Fourier Transform_ (FFT) is a DFT that is optimized for the
@@ -570,14 +674,29 @@ end
 md"""
 Equipped with this knowledge, we can define a helper function that
 returns the correctly normalized FFT:
-
 ```math
-\operatorname{NFFT}(y;t) ≝ \operatorname{FFT}(y)\frac{t_N-t_1}{N\sqrt{2\pi}}
+\operatorname{NFFT}(y;t) ≝ \operatorname{FFT}(y)\frac{t_N-t_1}{N\sqrt{2\pi}},
+```
+which we immediately generalize to ``M`` dimensions:
+```math
+\operatorname{NFFT}(y;t) ≝ \operatorname{FFT}(y)
+\frac{t^{(1)}_{N^{(1)}}-t^{(1)}_1}{N^{(1)}\sqrt{2\pi}}
+\frac{t^{(2)}_{N^{(2)}}-t^{(2)}_1}{N^{(2)}\sqrt{2\pi}}
+...
+\frac{t^{(M)}_{N^{(M)}}-t^{(M)}_1}{N^{(M)}\sqrt{2\pi}}
 ```
 """
 
 # ╔═╡ 5d86a89a-dc2f-4a6f-9462-12d78e4a75f4
-nfft(y, t) = fftshift(fft(y))*(t[end]-t[1])/(length(t)*√(2π))
+function nfft(y, ts...)
+    Y = fftshift(fft(y))
+    f = one(eltype(Y))
+    for t in ts
+        f *= (t[end]-t[1])/(length(t)*√(2π))
+    end
+
+    f*Y
+end
 
 # ╔═╡ c0dfab29-a96c-40bb-85cb-776ccd661f68
 md""" # Sampling
@@ -1122,6 +1241,86 @@ let
 
     plot(p1, p2, p3, layout=@layout([a;b;c]), size=(700,700))
 end
+
+# ╔═╡ 9073e39d-be00-4b4b-b936-8cf0c9c6093f
+md"""# 2D FFTs
+
+We illustrate the FFT in two dimensions using the multidimensional
+Gaussian introduced above:
+
+```math
+\begin{aligned}
+f(x,y)
+&=
+\exp\left(
+-\begin{bmatrix}x&y\end{bmatrix}
+\mathsf{C}
+\begin{bmatrix}x\\y\end{bmatrix}
+\right),
+\end{aligned}
+```
+for two different coupling matrices ``\mathsf{C}``.
+"""
+
+# ╔═╡ 56a6f42e-e4d4-4273-8907-0e83554df404
+multi_gauss(C, r::AbstractVector) = exp(-dot(r, C, r))
+
+# ╔═╡ 63623d4f-5149-4d35-987c-d979e61478eb
+multi_gauss(C, x::Number...) = multi_gauss(C, [x...])
+
+# ╔═╡ 9ab6763a-5f15-4653-8002-926eb6f605e0
+# We use the same grid along x and y
+xy = range(-10, stop=10, length=401)
+
+# ╔═╡ d43916c2-d734-4426-a2cb-eb4efe6d0d91
+md"## Diagonal coupling matrix (factorizable)"
+
+# ╔═╡ 1f421986-1f2a-4392-87e7-4c9aa99f0a73
+Cdiag = Diagonal([1,20])
+
+# ╔═╡ eec5e26b-bb31-42b1-b67b-a55a84a19065
+isposdef(Cdiag)
+
+# ╔═╡ a76d713a-eb7a-41ef-a00f-79555325906f
+zdiag = [multi_gauss(Cdiag, x, y)
+         for y in xy, x in xy]
+
+# ╔═╡ a485c2bd-d87f-4bac-be2e-6bbe145f0410
+Zdiag = nfft(zdiag, xy, xy)
+
+# ╔═╡ 38cb0a73-74fb-4faf-84ba-856f1bce8454
+md"## Non-diagonal matrix"
+
+# ╔═╡ c379dcea-a3dc-45d6-84de-b65ba66a8468
+Cnondiag = [1 0.4;0.4 0.25]
+
+# ╔═╡ cfa69283-e358-4767-8f4e-6bf9175d07ad
+isposdef(Cnondiag)
+
+# ╔═╡ e45b14c7-f228-40d5-9ba1-11a48b6b724e
+znondiag = [multi_gauss(Cnondiag, x, y)
+         for y in xy, x in xy]
+
+# ╔═╡ c1319e76-3a1e-4841-9c56-ab061ae76dc3
+Znondiag = nfft(znondiag, xy, xy)
+
+# ╔═╡ 6f3294cb-66a3-4d5e-ba75-701d94105e11
+function plot_2d_fft(x, y, z, Z; size=(490,900))
+    ωx = fftω(x)
+    ωy = fftω(y)
+    p1 = heatmap(x, y, znondiag, aspect_ratio=:equal,
+                 xlabel=L"x", ylabel=L"y")
+    p2 = heatmap(ωx, ωy, abs.(Znondiag), aspect_ratio=:equal,
+                 xlabel=L"\omega_x", ylabel=L"\omega_y")
+
+    plot(p1, p2, layout=@layout([a;b]), size=size)
+end
+
+# ╔═╡ 9849d370-4746-4672-b475-044268ecfa85
+plot_2d_fft(xy, xy, zdiag, Zdiag)
+
+# ╔═╡ 375d427d-2353-45e4-a3d3-c0398dabb4f7
+plot_2d_fft(xy, xy, znondiag, Znondiag)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2273,5 +2472,22 @@ version = "1.4.1+0"
 # ╠═5a58d0e6-5525-49c4-8bd2-4310c247ddbd
 # ╠═da9115b5-85e1-4227-bd5a-b84355497552
 # ╟─efde8cf9-f369-49a0-838c-af33d6d0102d
+# ╟─9073e39d-be00-4b4b-b936-8cf0c9c6093f
+# ╠═56a6f42e-e4d4-4273-8907-0e83554df404
+# ╠═63623d4f-5149-4d35-987c-d979e61478eb
+# ╟─6f3294cb-66a3-4d5e-ba75-701d94105e11
+# ╠═9ab6763a-5f15-4653-8002-926eb6f605e0
+# ╟─d43916c2-d734-4426-a2cb-eb4efe6d0d91
+# ╠═1f421986-1f2a-4392-87e7-4c9aa99f0a73
+# ╠═eec5e26b-bb31-42b1-b67b-a55a84a19065
+# ╠═a76d713a-eb7a-41ef-a00f-79555325906f
+# ╠═a485c2bd-d87f-4bac-be2e-6bbe145f0410
+# ╟─9849d370-4746-4672-b475-044268ecfa85
+# ╟─38cb0a73-74fb-4faf-84ba-856f1bce8454
+# ╠═c379dcea-a3dc-45d6-84de-b65ba66a8468
+# ╠═cfa69283-e358-4767-8f4e-6bf9175d07ad
+# ╠═e45b14c7-f228-40d5-9ba1-11a48b6b724e
+# ╠═c1319e76-3a1e-4841-9c56-ab061ae76dc3
+# ╟─375d427d-2353-45e4-a3d3-c0398dabb4f7
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
