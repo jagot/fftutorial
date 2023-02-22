@@ -176,8 +176,7 @@ we have to take the conjugate transpose of ``\mathbf{a}``:
 
 ## Fourier transforms in higher dimensions
 
-The Fourier transform generalizes rather trivially to higher
-dimensions:
+The FT generalizes rather trivially to higher dimensions:
 
 ```math
 \begin{aligned}
@@ -213,7 +212,7 @@ function ``f`` fulfills a lot of important mathematical properties a
 physicist would summarize as _nice_).
 
 Of course, for functions which factorize along the dimensions,
-``f(x,y,...)=f_x(x)f_y(y)...``, the Fourier transform also factorizes:
+``f(x,y,...)=f_x(x)f_y(y)...``, the FT also factorizes:
 
 ```math
 \begin{aligned}
@@ -358,9 +357,8 @@ f\rangle =
 (\mathrm{i}\omega)^n
 \langle \omega|f\rangle
 ```
-(slight abuse of notation). One can also show that the Fourier
-transform of a time integral (anti-derivative) of a function is
-equivalently given by
+(slight abuse of notation). One can also show that the FT of a time
+integral (anti-derivative) of a function is equivalently given by
 ```math
 \implies
 \langle \omega|
@@ -485,11 +483,11 @@ x_n=
 X_{k}\cdot
 \mathrm{e}^{{\frac {\mathrm{i}2\pi }{N}}kn}.
 ```
-Note that in contrast to the continuous Fourier transform, the
-DFT/IDFT pair is almost universally defined with the normalization
-``N^{-1}`` attached to the inverse transform. This avoids a
-potentially unnecessary division, if only the DFT is needed, and the
-normalization is unimportant.
+Note that in contrast to the continuous FT, the DFT/IDFT pair is
+almost universally defined with the normalization ``N^{-1}`` attached
+to the inverse transform. This avoids a potentially unnecessary
+division, if only the DFT is needed, and the normalization is
+unimportant.
 
 - Basis function ``\mathrm{e}^{-\mathrm{i}\frac{2\pi k}{N}n}`` instead
   of ``\mathrm{e}^{-\mathrm{i}\omega t}``.
@@ -611,10 +609,10 @@ FFT–IFFT transform pair should be overall unitary, but if we only need
 the FFT transform, we can avoid a potentially unnecessary
 division. However, if we are interested in the spectral amplitudes, we
 have to perform the normalization ourselves. We do this by noting that
-if we wish the FFT to approximate the continuous Fourier transform in
-the Riemann sense, we have to multiply the sum by the time step
-``\delta t`` divided by ``\sqrt{2\pi}`` (since that is our choice of
-normalization of the Fourier transform, as detailed above):
+if we wish the FFT to approximate the continuous FT in the Riemann
+sense, we have to multiply the sum by the time step ``\delta t``
+divided by ``\sqrt{2\pi}`` (since that is our choice of normalization
+of the FT, as detailed above):
 ```math
 \frac{\delta t}{\sqrt{2\pi}} \equiv
 \frac{t_N-t_1}{N\sqrt{2\pi}}.
@@ -1277,7 +1275,8 @@ function plot_2d_fft(x, y, z, Z; size=(490,900))
     p2 = heatmap(ωx, ωy, abs.(Z), aspect_ratio=:equal,
                  xlabel=L"\omega_x", ylabel=L"\omega_y")
 
-    plot(p1, p2, layout=@layout([a;b]), size=size)
+    plot(p1, p2, layout=@layout([a;b]), size=size,
+         left_margin=3Plots.mm)
 end
 
 # ╔═╡ 9ab6763a-5f15-4653-8002-926eb6f605e0
@@ -1321,6 +1320,85 @@ Znondiag = nfft(znondiag, xy, xy)
 
 # ╔═╡ 375d427d-2353-45e4-a3d3-c0398dabb4f7
 plot_2d_fft(xy, xy, znondiag, Znondiag)
+
+# ╔═╡ 628900ea-3e25-4f34-951c-3f3695541cac
+md"""
+# Time–frequency analysis
+
+Sometimes, we study signals whose frequency content vary over time. It
+is then useful to perform time–frequency analysis. The normal FT
+integrates over "all time" (from ``-\infty`` to ``\infty``), and all
+time information is "lost"; in reality it is encoded in the phase of
+the Fourier modes, but this can sometimes be difficult to analyze.
+
+One way circumventing this problem is to use the short-time Fourier
+transform (STFT), which is defined similar to the normal FT, but with
+an additional _sliding window_ multiplying the input signal:
+```math
+\hat{f}(\omega,\tau) =
+a_1
+\int_{-\infty}^{\infty}
+\mathrm{d}t
+w(t-\tau)
+\mathrm{e}^{-\mathrm{i}\omega t}
+f(t).
+\tag{STFT}
+```
+
+A very common choice for the window is a Gaussian function, and in
+this case, the STFT is known as the [_Gabor
+transform_](https://en.wikipedia.org/wiki/Gabor_transform). By
+changing the width of the window, we can trade time resolution for
+frequency resolution; this is the famous [Fourier scaling
+theorem](https://en.wikipedia.org/wiki/Fourier_transform#Time_scaling).
+"""
+
+# ╔═╡ ac6ce569-63cb-4f88-8125-342d6855f01d
+function gabor_fft(t::AbstractVector, y::AbstractVector, τ, σ)
+    α = 1/2σ^2
+    w(τ) = exp.(-α*(t .- τ).^2)
+    ω = fftω(t)
+    Y = zeros(complex(eltype(y)), length(ω), length(τ))
+
+    for (j,τ) in enumerate(τ)
+        Y[:,j] = nfft(y .* w(τ), t)
+    end
+
+    Y
+end
+
+# ╔═╡ 26664c0b-4139-4f6d-8b06-b30a872f9861
+function plot_gabor(t, ω, τ, y, Y, Y_gabor)
+    p1 = plot(t, y, xmirror=true, ymirror=true,
+              xlabel=L"t", ylabel=L"y(t)",
+              legend=false)
+    p2 = plot(abs2.(Y), ω, xlabel=L"|Y(\omega)|^2", ylabel=L"\omega",
+              legend=false)
+    p3 = heatmap(τ, ω, abs2.(Y_gabor), colorbar=false,
+                 ymirror=true, xlabel=L"t", ylabel=L"\omega")
+
+    plot(p1, p2, p3, layout=@layout([_ a;b c{0.7w}]), size=(700,800),
+         left_margin=3Plots.mm, right_margin=3Plots.mm)
+end
+
+# ╔═╡ 1f4777bd-008b-4c17-a2f6-9198ac4c9faf
+@bind gabor_parameters multi_input("Gabor parameters",
+                                   (:window_width, Slider(range(0.001, stop=20.0, length=101), default=2.0, show_value=true),
+                                    md"Window width"),
+                                   (:chirp, Slider(range(0, stop=1e-1, length=101), default=3e-2, show_value=true),
+                                    md"Chirp coefficient"))
+
+# ╔═╡ af3c51e8-f450-4b6e-b57c-fc2deb29077b
+ychirped = exp.(-tfine.^2/(2*4^2)) .* sin.(2π*(1 .+ gabor_parameters.chirp*tfine).*tfine)
+
+# ╔═╡ 1803c1c2-9c65-49b3-82c9-4da86b0995ea
+Ychirped = nfft(ychirped, tfine)
+
+# ╔═╡ bb287c32-3de3-45ef-a351-7fc712570d8d
+Ychirped_gabor = gabor_fft(tfine, ychirped, tfine, gabor_parameters.window_width)
+
+# ╔═╡ 7ac3dbee-ebdd-4859-bcb4-c108a248ad53
+plot_gabor(tfine, ωfine, tfine, ychirped, Ychirped, Ychirped_gabor)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2489,5 +2567,13 @@ version = "1.4.1+0"
 # ╠═e45b14c7-f228-40d5-9ba1-11a48b6b724e
 # ╠═c1319e76-3a1e-4841-9c56-ab061ae76dc3
 # ╟─375d427d-2353-45e4-a3d3-c0398dabb4f7
+# ╟─628900ea-3e25-4f34-951c-3f3695541cac
+# ╠═ac6ce569-63cb-4f88-8125-342d6855f01d
+# ╟─26664c0b-4139-4f6d-8b06-b30a872f9861
+# ╠═af3c51e8-f450-4b6e-b57c-fc2deb29077b
+# ╠═1803c1c2-9c65-49b3-82c9-4da86b0995ea
+# ╠═bb287c32-3de3-45ef-a351-7fc712570d8d
+# ╟─1f4777bd-008b-4c17-a2f6-9198ac4c9faf
+# ╠═7ac3dbee-ebdd-4859-bcb4-c108a248ad53
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
