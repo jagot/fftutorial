@@ -54,7 +54,7 @@ An excellent reference is
 """
 
 # ╔═╡ 0489010d-31c6-4d41-8a6c-0d6581183aa9
-md"""
+#= md"""
 - [X] Inner product
 - [X] Complete set of orthogonal functions
 - [X] Schwarz class
@@ -72,7 +72,7 @@ md"""
       [see Fig. 9.2 of Oran Brigham (1988)]
 - [ ] Zeta transform
 - [ ] Phase
-"""
+""" =#
 
 # ╔═╡ 23b0b46e-41c3-487e-a852-c2056cbb3afd
 md""" # Theory
