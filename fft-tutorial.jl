@@ -60,7 +60,7 @@ md"""
 - [X] Schwarz class
 - [X] Conjugate variables
 - [X] DFT, DST, DCT
-- [-] Parseval’s theorem
+- [X] Parseval’s theorem
 - [X] Apodizing window functions
 - [X] Background removal
 - [X] Fourier differentiation ([notes by Steven G. Johnson](https://math.mit.edu/~stevenj/fft-deriv.pdf))
@@ -1268,6 +1268,18 @@ multi_gauss(C, r::AbstractVector) = exp(-dot(r, C, r))
 # ╔═╡ 63623d4f-5149-4d35-987c-d979e61478eb
 multi_gauss(C, x::Number...) = multi_gauss(C, [x...])
 
+# ╔═╡ 6f3294cb-66a3-4d5e-ba75-701d94105e11
+function plot_2d_fft(x, y, z, Z; size=(490,900))
+    ωx = fftω(x)
+    ωy = fftω(y)
+    p1 = heatmap(x, y, z, aspect_ratio=:equal,
+                 xlabel=L"x", ylabel=L"y")
+    p2 = heatmap(ωx, ωy, abs.(Z), aspect_ratio=:equal,
+                 xlabel=L"\omega_x", ylabel=L"\omega_y")
+
+    plot(p1, p2, layout=@layout([a;b]), size=size)
+end
+
 # ╔═╡ 9ab6763a-5f15-4653-8002-926eb6f605e0
 # We use the same grid along x and y
 xy = range(-10, stop=10, length=401)
@@ -1288,6 +1300,9 @@ zdiag = [multi_gauss(Cdiag, x, y)
 # ╔═╡ a485c2bd-d87f-4bac-be2e-6bbe145f0410
 Zdiag = nfft(zdiag, xy, xy)
 
+# ╔═╡ 9849d370-4746-4672-b475-044268ecfa85
+plot_2d_fft(xy, xy, zdiag, Zdiag)
+
 # ╔═╡ 38cb0a73-74fb-4faf-84ba-856f1bce8454
 md"## Non-diagonal matrix"
 
@@ -1303,21 +1318,6 @@ znondiag = [multi_gauss(Cnondiag, x, y)
 
 # ╔═╡ c1319e76-3a1e-4841-9c56-ab061ae76dc3
 Znondiag = nfft(znondiag, xy, xy)
-
-# ╔═╡ 6f3294cb-66a3-4d5e-ba75-701d94105e11
-function plot_2d_fft(x, y, z, Z; size=(490,900))
-    ωx = fftω(x)
-    ωy = fftω(y)
-    p1 = heatmap(x, y, znondiag, aspect_ratio=:equal,
-                 xlabel=L"x", ylabel=L"y")
-    p2 = heatmap(ωx, ωy, abs.(Znondiag), aspect_ratio=:equal,
-                 xlabel=L"\omega_x", ylabel=L"\omega_y")
-
-    plot(p1, p2, layout=@layout([a;b]), size=size)
-end
-
-# ╔═╡ 9849d370-4746-4672-b475-044268ecfa85
-plot_2d_fft(xy, xy, zdiag, Zdiag)
 
 # ╔═╡ 375d427d-2353-45e4-a3d3-c0398dabb4f7
 plot_2d_fft(xy, xy, znondiag, Znondiag)
