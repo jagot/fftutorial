@@ -1368,12 +1368,13 @@ function gabor_fft(t::AbstractVector, y::AbstractVector, τ, σ)
 end
 
 # ╔═╡ 26664c0b-4139-4f6d-8b06-b30a872f9861
-function plot_gabor(t, ω, τ, y, Y, Y_gabor)
+function plot_gabor(t, ω, τ, y, Y, Y_gabor, σ)
     p1 = plot(t, y, xmirror=true, ymirror=true,
-              xlabel=L"t", ylabel=L"y(t)",
-              legend=false)
+              xlabel=L"t", label=L"y(t)", lw=2)
+    α = 1/2σ^2
+    plot!(t, exp.(-α*t.^2), label=L"w(t,0)", ls=:dash, lw=2)
     p2 = plot(abs2.(Y), ω, xlabel=L"|Y(\omega)|^2", ylabel=L"\omega",
-              legend=false)
+              legend=false, lw=2)
     p3 = heatmap(τ, ω, abs2.(Y_gabor), colorbar=false,
                  ymirror=true, xlabel=L"t", ylabel=L"\omega")
 
@@ -1398,7 +1399,7 @@ Ychirped = nfft(ychirped, tfine)
 Ychirped_gabor = gabor_fft(tfine, ychirped, tfine, gabor_parameters.window_width)
 
 # ╔═╡ 7ac3dbee-ebdd-4859-bcb4-c108a248ad53
-plot_gabor(tfine, ωfine, tfine, ychirped, Ychirped, Ychirped_gabor)
+plot_gabor(tfine, ωfine, tfine, ychirped, Ychirped, Ychirped_gabor, gabor_parameters.window_width)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2574,6 +2575,6 @@ version = "1.4.1+0"
 # ╠═1803c1c2-9c65-49b3-82c9-4da86b0995ea
 # ╠═bb287c32-3de3-45ef-a351-7fc712570d8d
 # ╟─1f4777bd-008b-4c17-a2f6-9198ac4c9faf
-# ╠═7ac3dbee-ebdd-4859-bcb4-c108a248ad53
+# ╟─7ac3dbee-ebdd-4859-bcb4-c108a248ad53
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
