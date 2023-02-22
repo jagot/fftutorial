@@ -32,10 +32,12 @@
    ```
    winget install -e --id Microsoft.WindowsTerminal
    ```
-3. Close the terminal (we need to reload the `PATH` environment variable)
-4. In a directory of your choosing, clone this repository:
-   1. Browse to this directory (using either `cmd` or the newly
-   installed Windows Terminal):
+3. Close the terminal (we need to reload the `PATH` environment
+   variable)
+4. Open a new terminal (either `cmd` or the newly installed Windows
+   Terminal).
+5. In a directory of your choosing, clone this repository:
+   1. Browse to this directory:
    ```
    cd \the\directory\you\chose
    ```
@@ -43,9 +45,17 @@
    ```
    git clone https://github.com/jagot/fftutorial.git
    ```
-5. Change into the newly created directory and start the tutorial
+6. Change into the newly created directory and start the tutorial
    notebook:
    ```
    cd fftutorial
    julia runme.jl
    ```
+7. Wait
+8. Wait some more (the first time you run this command, some
+   plotting-related packages will be downloaded and compiled, and this
+   takes some time).
+9. A notebook should appear in your web browser. Read the theory and
+   marvel at the examples.
+10. To close the notebook server, press `Ctrl+C` in the command window,
+   and `Ctrl+D` to exit Julia.
